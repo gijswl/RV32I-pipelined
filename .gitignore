@@ -1,0 +1,9 @@
+.settings/
+bck/
+simu/
+tools/
+work/
+
+RV32I.xlsx
+~$RV32I.xlsx
+riscv-isa-manual.lnk

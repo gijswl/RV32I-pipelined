@@ -5,11 +5,12 @@ use ieee.numeric_std.all;
 entity instr_decode is
 	port(
 		I_CLK   : in  std_logic;
+		I_STALL : in  std_logic;
 		I_RW    : in  std_logic;
 		I_RA    : in  std_logic_vector(4 downto 0);
 		I_RD    : in  std_logic_vector(31 downto 0);
 		I_INSTR : in  std_logic_vector(31 downto 0);
-		Q_INSTR : out std_logic_vector(31 downto 0);
+		Q_CS    : out std_logic_vector(31 downto 0);
 		Q_A     : out std_logic_vector(31 downto 0);
 		Q_B     : out std_logic_vector(31 downto 0)
 	);
@@ -49,14 +50,31 @@ architecture RTL of instr_decode is
 		);
 	end component itype_decoder;
 
+	signal L_WIR : std_logic := '0';
+
 	signal L_INSTR  : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_TYPE   : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_FORMAT : std_logic_vector(5 downto 0)  := "000000";
+
 	signal L_RD1    : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_RD2    : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_IMM    : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_IMMSEL : std_logic                     := '0';
 	signal L_OPSEL  : std_logic                     := '0';
+
+	signal L_FUNC       : std_logic_vector(3 downto 0) := "0000";
+	signal L_ALU_FUNC   : std_logic_vector(4 downto 0) := "00000";
+	signal L_INSTR_FUNC : std_logic_vector(4 downto 0) := "00000";
+
+	signal ID_RE1 : std_logic := '0';
+	signal ID_RE2 : std_logic := '0';
+
+	signal EX_ALUFUNC : std_logic_vector(4 downto 0) := "00000";
+
+	signal MA_WBSEL : std_logic := '0';
+
+	signal WB_RW : std_logic                    := '0';
+	signal WB_RA : std_logic_vector(4 downto 0) := "00000";
 begin
 	ir : reg
 		generic map(
@@ -65,7 +83,7 @@ begin
 		port map(
 			I_CLK => I_CLK,
 			I_D   => I_INSTR,
-			I_W   => I_CLK,
+			I_W   => L_WIR,
 			Q_D   => L_INSTR
 		);
 
@@ -88,20 +106,54 @@ begin
 			Q_FORMAT => L_FORMAT
 		);
 
+	L_WIR <= not I_STALL;
+
 	with L_FORMAT select L_IMM <=
-		((20 downto 0 => L_INSTR(31)) & L_INSTR(30 downto 25) & L_INSTR(24 downto 21) & L_INSTR(20)) when "000010",
+		((20 downto 0 => L_INSTR(31)) & L_INSTR(30 downto 25) & L_INSTR(24 downto 21) & L_INSTR(20)) when "000010", --
 		((20 downto 0 => L_INSTR(31)) & L_INSTR(30 downto 25) & L_INSTR(11 downto 8) & L_INSTR(7)) when "000100", --
 		((19 downto 0 => L_INSTR(31)) & L_INSTR(7) & L_INSTR(30 downto 25) & L_INSTR(11 downto 8) & '0') when "001000", --
 		(L_INSTR(31) & L_INSTR(30 downto 20) & L_INSTR(19 downto 12) & (11 downto 0 => '0')) when "010000", --
-		((11 downto 0 => L_INSTR(31)) & L_INSTR(19 downto 12) & L_INSTR(20) & L_INSTR(31 downto 25) & L_INSTR(24 downto 21)) when "100000",
+		((11 downto 0 => L_INSTR(31)) & L_INSTR(19 downto 12) & L_INSTR(20) & L_INSTR(31 downto 25) & L_INSTR(24 downto 21)) when "100000", --
 		X"00000000" when others;
 
 	L_OPSEL  <= L_TYPE(4) or L_TYPE(5) or L_TYPE(13);
 	L_IMMSEL <= L_OPSEL;
 
-	Q_A     <= L_RD1;
-	Q_B     <= L_IMM when L_IMMSEL = '1' and L_OPSEL = '1'
+	ID_RE1 <= L_TYPE(4) or L_TYPE(12) or L_TYPE(13);
+	ID_RE2 <= L_TYPE(12);
+
+	L_FUNC <= L_INSTR(30) & L_INSTR(14 downto 12);
+	with L_FUNC select L_ALU_FUNC <=
+		"00010" when "0000",
+		"00011" when "1000",
+		"10000" when "0001",
+		"00111" when "0010",
+		"00111" when "1010",
+		"01000" when "0011",
+		"01000" when "1011",
+		"00110" when "0100",
+		"10001" when "0101",
+		"10010" when "1101",
+		"00101" when "0110",
+		"00100" when "0111",
+		"00000" when others;
+
+	with L_TYPE select L_INSTR_FUNC <=
+		"00001" when "00000000000000000000000000100000",
+		"00010" when "00000000000000000010000000000000",
+		"00000" when others;
+
+	EX_ALUFUNC <= L_ALU_FUNC when L_TYPE(4) = '1' or L_TYPE(5) = '1' else L_INSTR_FUNC;
+
+	WB_RW <= L_TYPE(4) or L_TYPE(5) or L_TYPE(12) or L_TYPE(13);
+	WB_RA <= L_INSTR(11 downto 7);
+
+	Q_A  <= L_RD1;
+	Q_B  <= L_IMM when L_IMMSEL = '1' and L_OPSEL = '1'
 		else L_RD2 when L_OPSEL = '0'
 		else X"00000000";
-	Q_INSTR <= L_INSTR;
+	
+	with I_STALL select Q_CS <=
+		X"00000000" when '1',
+		std_logic_vector(resize(unsigned(MA_WBSEL & WB_RW & ID_RE2 & ID_RE1 & EX_ALUFUNC & WB_RA & L_INSTR(24 downto 20) & L_INSTR(19 downto 15)), Q_CS'length)) when others;
 end architecture RTL;

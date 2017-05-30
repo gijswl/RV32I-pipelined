@@ -4,11 +4,11 @@ use ieee.numeric_std.all;
 
 entity memory is
 	port(
-		I_CLK   : in  std_logic;
-		I_C     : in  std_logic_vector(31 downto 0);
-		I_INSTR : in  std_logic_vector(31 downto 0);
-		Q_INSTR : out std_logic_vector(31 downto 0);
-		Q_R     : out std_logic_vector(31 downto 0)
+		I_CLK : in  std_logic;
+		I_C   : in  std_logic_vector(31 downto 0);
+		I_CS  : in  std_logic_vector(31 downto 0);
+		Q_CS  : out std_logic_vector(31 downto 0);
+		Q_R   : out std_logic_vector(31 downto 0)
 	);
 end entity memory;
 
@@ -25,17 +25,8 @@ architecture RTL of memory is
 		);
 	end component reg;
 
-	component itype_decoder is
-		port(
-			I_INSTR  : in  std_logic_vector(6 downto 0);
-			Q_TYPE   : out std_logic_vector(31 downto 0);
-			Q_FORMAT : out std_logic_vector(5 downto 0)
-		);
-	end component itype_decoder;
-
-	signal L_INSTR : std_logic_vector(31 downto 0) := X"00000000";
-	signal L_C     : std_logic_vector(31 downto 0) := X"00000000";
-	signal L_WBSEL : std_logic                     := '0';
+	signal L_CS : std_logic_vector(31 downto 0) := X"00000000";
+	signal L_C  : std_logic_vector(31 downto 0) := X"00000000";
 begin
 	ir : reg
 		generic map(
@@ -43,9 +34,9 @@ begin
 		)
 		port map(
 			I_CLK => I_CLK,
-			I_D   => I_INSTR,
+			I_D   => I_CS,
 			I_W   => I_CLK,
-			Q_D   => L_INSTR
+			Q_D   => L_CS
 		);
 
 	c : reg
@@ -59,6 +50,6 @@ begin
 			Q_D   => L_C
 		);
 
-	Q_R     <= L_C when L_WBSEL = '0' else X"00000000";
-	Q_INSTR <= L_INSTR;
+	Q_R  <= L_C when L_CS(23) = '0' else X"00000000";
+	Q_CS <= L_CS;
 end architecture RTL;

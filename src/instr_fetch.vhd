@@ -9,6 +9,7 @@ use work.constants.all;
 entity instr_fetch is
 	port(
 		I_CLK   : in  std_logic;
+		I_STALL : in  std_logic;
 		Q_INSTR : out std_logic_vector(31 downto 0)
 	);
 end entity instr_fetch;
@@ -36,6 +37,8 @@ architecture RTL of instr_fetch is
 
 	signal L_PC   : std_logic_vector(31 downto 0) := X"00000004";
 	signal L_PC_4 : std_logic_vector(31 downto 0) := X"00000000";
+
+	signal L_WPC : std_logic := '0';
 begin
 	pc : reg
 		generic map(
@@ -44,7 +47,7 @@ begin
 		port map(
 			I_CLK => I_CLK,
 			I_D   => L_PC_4,
-			I_W   => I_CLK,
+			I_W   => L_WPC,
 			Q_D   => L_PC
 		);
 
@@ -55,5 +58,6 @@ begin
 			Q_INSTR => Q_INSTR
 		);
 
+	L_WPC  <= not I_STALL;
 	L_PC_4 <= L_PC + "100";
 end architecture RTL;

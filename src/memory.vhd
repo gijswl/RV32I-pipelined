@@ -4,11 +4,11 @@ use ieee.numeric_std.all;
 
 entity memory is
 	port(
-		I_CLK : in  std_logic;
-		I_C   : in  std_logic_vector(31 downto 0);
-		I_CS  : in  std_logic_vector(31 downto 0);
-		Q_CS  : out std_logic_vector(31 downto 0);
-		Q_R   : out std_logic_vector(31 downto 0)
+		I_CLK  : in  std_logic;
+		I_C    : in  std_logic_vector(31 downto 0);
+		I_CS   : in  std_logic_vector(31 downto 0);
+		Q_CS   : out std_logic_vector(31 downto 0);
+		Q_R    : out std_logic_vector(31 downto 0)
 	);
 end entity memory;
 
@@ -50,6 +50,7 @@ begin
 			Q_D   => L_C
 		);
 
+	-- TODO this needs to change when adding reads from memory
 	Q_R  <= L_C when L_CS(23) = '0' else X"00000000";
 	Q_CS <= L_CS;
 end architecture RTL;

@@ -4,12 +4,15 @@ use ieee.numeric_std.all;
 
 entity execute is
 	port(
-		I_CLK : in  std_logic;
-		I_A   : in  std_logic_vector(31 downto 0);
-		I_B   : in  std_logic_vector(31 downto 0);
-		I_CS  : in  std_logic_vector(31 downto 0);
-		Q_CS  : out std_logic_vector(31 downto 0);
-		Q_C   : out std_logic_vector(31 downto 0)
+		I_CLK  : in  std_logic;
+		I_FW_A : in  std_logic_vector(1 downto 0);
+		I_FW_B : in  std_logic_vector(1 downto 0);
+		I_A    : in  std_logic_vector(31 downto 0);
+		I_B    : in  std_logic_vector(31 downto 0);
+		I_FW_M : in  std_logic_vector(31 downto 0);
+		I_CS   : in  std_logic_vector(31 downto 0);
+		Q_CS   : out std_logic_vector(31 downto 0);
+		Q_C    : out std_logic_vector(31 downto 0)
 	);
 end entity execute;
 
@@ -37,8 +40,10 @@ architecture RTL of execute is
 		);
 	end component alu;
 
-	signal L_A : std_logic_vector(31 downto 0) := X"00000000";
-	signal L_B : std_logic_vector(31 downto 0) := X"00000000";
+	signal L_IA : std_logic_vector(31 downto 0) := X"00000000";
+	signal L_IB : std_logic_vector(31 downto 0) := X"00000000";
+	signal L_A  : std_logic_vector(31 downto 0) := X"00000000";
+	signal L_B  : std_logic_vector(31 downto 0) := X"00000000";
 
 	signal L_TYPE : std_logic_vector(31 downto 0) := X"00000000";
 
@@ -63,7 +68,7 @@ begin
 		)
 		port map(
 			I_CLK => I_CLK,
-			I_D   => I_A,
+			I_D   => L_IA,
 			I_W   => I_CLK,
 			Q_D   => L_A
 		);
@@ -74,7 +79,7 @@ begin
 		)
 		port map(
 			I_CLK => I_CLK,
-			I_D   => I_B,
+			I_D   => L_IB,
 			I_W   => I_CLK,
 			Q_D   => L_B
 		);
@@ -88,6 +93,15 @@ begin
 			Q_CC  => L_CC,
 			Q_O   => L_O
 		);
+
+	L_IA <= I_A when I_FW_A = "00"
+		else L_O when I_FW_A = "01"
+		else I_FW_M when I_FW_A = "10"
+		else "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+	L_IB <= I_B when I_FW_B = "00"
+		else L_O when I_FW_A = "01"
+		else I_FW_M when I_FW_A = "10"
+		else "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 
 	Q_CS <= L_CS;
 	Q_C  <= L_O;

@@ -36,12 +36,15 @@ architecture RTL of cpu_core is
 
 	component execute is
 		port(
-			I_CLK : in  std_logic;
-			I_A   : in  std_logic_vector(31 downto 0);
-			I_B   : in  std_logic_vector(31 downto 0);
-			I_CS  : in  std_logic_vector(31 downto 0);
-			Q_CS  : out std_logic_vector(31 downto 0);
-			Q_C   : out std_logic_vector(31 downto 0)
+			I_CLK  : in  std_logic;
+			I_FW_A : in  std_logic_vector(1 downto 0);
+			I_FW_B : in  std_logic_vector(1 downto 0);
+			I_A    : in  std_logic_vector(31 downto 0);
+			I_B    : in  std_logic_vector(31 downto 0);
+			I_FW_M : in  std_logic_vector(31 downto 0);
+			I_CS   : in  std_logic_vector(31 downto 0);
+			Q_CS   : out std_logic_vector(31 downto 0);
+			Q_C    : out std_logic_vector(31 downto 0)
 		);
 	end component execute;
 
@@ -81,6 +84,9 @@ architecture RTL of cpu_core is
 	signal L_RA : std_logic_vector(4 downto 0)  := "00000";
 	signal L_RW : std_logic                     := '0';
 
+	signal C_FW_A : std_logic_vector(1 downto 0) := "00";
+	signal C_FW_B : std_logic_vector(1 downto 0) := "00";
+
 	signal C_STALL : std_logic := '0';
 begin
 	process(I_CLK)
@@ -112,12 +118,15 @@ begin
 
 	ex_stage : execute
 		port map(
-			I_CLK => I_CLK,
-			I_A   => L_A,
-			I_B   => L_B,
-			I_CS  => ID_CS,
-			Q_CS  => EX_CS,
-			Q_C   => L_C
+			I_CLK  => I_CLK,
+			I_FW_A => C_FW_A,
+			I_FW_B => C_FW_B,
+			I_A    => L_A,
+			I_B    => L_B,
+			I_FW_M => L_R,
+			I_CS   => ID_CS,
+			Q_CS   => EX_CS,
+			Q_C    => L_C
 		);
 
 	ma_stage : memory
@@ -139,8 +148,17 @@ begin
 			Q_RA  => L_RA
 		);
 
-	C_STALL <= '1' when (
-		((((ID_CS_BUF(4 downto 0) = EX_CS(14 downto 10)) and EX_CS(22) = '1') or ((ID_CS_BUF(4 downto 0) = MA_CS(14 downto 10)) and MA_CS(22) = '1')) and ID_CS_BUF(20) = '1') --
-		 or ((((ID_CS_BUF(9 downto 5) = EX_CS(14 downto 10)) and EX_CS(22) = '1') or ((ID_CS_BUF(9 downto 5) = MA_CS(14 downto 10)) and MA_CS(22) = '1')) and ID_CS_BUF(21) = '1') --
-	) else '0';
+	-- TODO will probably need to stall again at some point
+	C_STALL <= '0';                     -- '1' when (
+	-- ((((ID_CS_BUF(4 downto 0) = EX_CS(14 downto 10)) and EX_CS(22) = '1') or ((ID_CS_BUF(4 downto 0) = MA_CS(14 downto 10)) and MA_CS(22) = '1')) and ID_CS_BUF(20) = '1') --
+	--		 or ((((ID_CS_BUF(9 downto 5) = EX_CS(14 downto 10)) and EX_CS(22) = '1') or ((ID_CS_BUF(9 downto 5) = MA_CS(14 downto 10)) and MA_CS(22) = '1')) and ID_CS_BUF(21) = '1') --
+	--	) else '0';
+
+	C_FW_A <= "01" when (
+			((ID_CS(4 downto 0) = EX_CS(14 downto 10)) and EX_CS(22) = '1' and ID_CS(20) = '1')
+		)
+		else "10" when (
+			((ID_CS(4 downto 0) = MA_CS(14 downto 10)) and MA_CS(22) = '1' and ID_CS(20) = '1')
+		)
+		else "00";
 end architecture RTL;

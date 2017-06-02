@@ -140,12 +140,6 @@ begin
 		"00100" when "0111",
 		"00000" when others;
 
-	with L_TYPE select L_INSTR_FUNC <=
-		"00001" when "00000000000000000000000000100000",
-		"00010" when "00000000000000000010000000000000",
-		
-		"00000" when others;
-
 	L_INSTR_FUNC <= "00001" when L_TYPE(5) = '1'
 		else "00010" when L_TYPE(13) = '1'
 		else "00111" when L_TYPE(24) = '1' and (not L_FUNC = "0110" and not L_FUNC = "0111")

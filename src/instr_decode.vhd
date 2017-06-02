@@ -108,7 +108,7 @@ begin
 		);
 
 	L_KILL <= L_TYPE(25) or L_TYPE(27);
-	L_WIR <= not I_STALL and not L_KILL;
+	L_WIR  <= not I_STALL and not L_KILL;
 
 	with L_FORMAT select L_IMM <=
 		((20 downto 0 => L_INSTR(31)) & L_INSTR(30 downto 25) & L_INSTR(24 downto 21) & L_INSTR(20)) when "000010", --
@@ -121,8 +121,8 @@ begin
 	L_OPSEL  <= L_TYPE(4) or L_TYPE(5) or L_TYPE(13);
 	L_IMMSEL <= L_OPSEL;
 
-	ID_RE1 <= L_TYPE(4) or L_TYPE(12) or L_TYPE(13);
-	ID_RE2 <= L_TYPE(12);
+	ID_RE1 <= L_TYPE(4) or L_TYPE(12) or L_TYPE(13) or L_TYPE(24);
+	ID_RE2 <= L_TYPE(12) or L_TYPE(24);
 
 	L_FUNC <= L_INSTR(30) & L_INSTR(14 downto 12);
 	with L_FUNC select L_ALU_FUNC <=
@@ -143,7 +143,13 @@ begin
 	with L_TYPE select L_INSTR_FUNC <=
 		"00001" when "00000000000000000000000000100000",
 		"00010" when "00000000000000000010000000000000",
+		
 		"00000" when others;
+
+	L_INSTR_FUNC <= "00001" when L_TYPE(5) = '1'
+		else "00010" when L_TYPE(13) = '1'
+		else "00111" when L_TYPE(24) = '1' and (not L_FUNC = "0110" and not L_FUNC = "0111")
+		else "00000";
 
 	EX_ALUFUNC <= L_ALU_FUNC when L_TYPE(4) = '1' or L_TYPE(5) = '1' else L_INSTR_FUNC;
 
@@ -157,5 +163,5 @@ begin
 
 	with I_STALL select Q_CS <=
 		X"00000000" when '1',
-		std_logic_vector(resize(unsigned(MA_WBSEL & WB_RW & ID_RE2 & ID_RE1 & EX_ALUFUNC & WB_RA & L_INSTR(24 downto 20) & L_INSTR(19 downto 15)), Q_CS'length)) when others;
+		std_logic_vector(resize(unsigned(L_INSTR(14 downto 12) & L_TYPE(24) & MA_WBSEL & WB_RW & ID_RE2 & ID_RE1 & EX_ALUFUNC & WB_RA & L_INSTR(24 downto 20) & L_INSTR(19 downto 15)), Q_CS'length)) when others;
 end architecture RTL;

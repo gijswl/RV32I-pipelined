@@ -6,10 +6,13 @@ entity instr_decode is
 	port(
 		I_CLK   : in  std_logic;
 		I_STALL : in  std_logic;
+		I_KILL  : in  std_logic;
 		I_RW    : in  std_logic;
 		I_RA    : in  std_logic_vector(4 downto 0);
 		I_RD    : in  std_logic_vector(31 downto 0);
+		I_PC    : in  std_logic_vector(31 downto 0);
 		I_INSTR : in  std_logic_vector(31 downto 0);
+		Q_PC    : out std_logic_vector(31 downto 0);
 		Q_CS    : out std_logic_vector(31 downto 0);
 		Q_A     : out std_logic_vector(31 downto 0);
 		Q_B     : out std_logic_vector(31 downto 0)
@@ -53,6 +56,7 @@ architecture RTL of instr_decode is
 	signal L_WIR  : std_logic := '0';
 	signal L_KILL : std_logic := '0';
 
+	signal L_PC     : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_INSTR  : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_TYPE   : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_FORMAT : std_logic_vector(5 downto 0)  := "000000";
@@ -88,6 +92,17 @@ begin
 			Q_D   => L_INSTR
 		);
 
+	pc : reg
+		generic map(
+			val => X"00000000"
+		)
+		port map(
+			I_CLK => I_CLK,
+			I_D   => I_PC,
+			I_W   => L_WIR,
+			Q_D   => L_PC
+		);
+
 	rf : registerfile
 		port map(
 			I_CLK => I_CLK,
@@ -107,7 +122,7 @@ begin
 			Q_FORMAT => L_FORMAT
 		);
 
-	L_KILL <= L_TYPE(25) or L_TYPE(27);
+	L_KILL <= L_TYPE(25) or L_TYPE(27) or I_KILL;
 	L_WIR  <= not I_STALL and not L_KILL;
 
 	with L_FORMAT select L_IMM <=
@@ -150,12 +165,14 @@ begin
 	WB_RW <= L_TYPE(4) or L_TYPE(5) or L_TYPE(12) or L_TYPE(13);
 	WB_RA <= L_INSTR(11 downto 7);
 
-	Q_A <= L_RD1;
-	Q_B <= L_IMM when L_IMMSEL = '1' and L_OPSEL = '1'
+	Q_PC <= L_PC;
+	Q_A  <= L_RD1;
+	Q_B  <= L_IMM when L_IMMSEL = '1' and L_OPSEL = '1'
 		else L_RD2 when L_OPSEL = '0'
 		else X"00000000";
 
 	with I_STALL select Q_CS <=
 		X"00000000" when '1',
 		std_logic_vector(resize(unsigned(L_INSTR(14 downto 12) & L_TYPE(24) & MA_WBSEL & WB_RW & ID_RE2 & ID_RE1 & EX_ALUFUNC & WB_RA & L_INSTR(24 downto 20) & L_INSTR(19 downto 15)), Q_CS'length)) when others;
+
 end architecture RTL;

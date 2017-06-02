@@ -12,7 +12,8 @@ entity execute is
 		I_FW_M : in  std_logic_vector(31 downto 0);
 		I_CS   : in  std_logic_vector(31 downto 0);
 		Q_CS   : out std_logic_vector(31 downto 0);
-		Q_C    : out std_logic_vector(31 downto 0)
+		Q_C    : out std_logic_vector(31 downto 0);
+		Q_BT   : out std_logic
 	);
 end entity execute;
 
@@ -102,14 +103,12 @@ begin
 		else L_O when I_FW_A = "01"
 		else I_FW_M when I_FW_A = "10"
 		else "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-			
+
 	B_BT <= '1' when L_CS(24) = '1' and (
-		(L_CS(27 downto 25) = "000" and L_CC(0) = '1') or 
-		(L_CS(27 downto 25) = "001" and L_CC(0) = '0') or
-		((L_CS(27 downto 25) = "101" or L_CS(28 downto 25) = "111") and (L_CC(1) = '0' and L_CC(2) = '0')) or
-		((L_CS(27 downto 25) = "100" or L_CS(28 downto 25) = "110") and (L_CC(1) = '1' and L_CC(2) = '1'))
+		(L_CS(27 downto 25) = "000" and L_CC(0) = '1') or (L_CS(27 downto 25) = "001" and L_CC(0) = '0') or ((L_CS(27 downto 25) = "101" or L_CS(28 downto 25) = "111") and (L_CC(1) = '0' and L_CC(2) = '0')) or ((L_CS(27 downto 25) = "100" or L_CS(28 downto 25) = "110") and (L_CC(1) = '1' and L_CC(2) = '1'))
 	) else '0';
 
 	Q_CS <= L_CS;
 	Q_C  <= L_O;
+	Q_BT <= B_BT;
 end architecture RTL;

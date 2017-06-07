@@ -1,14 +1,17 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 entity memory is
 	port(
-		I_CLK  : in  std_logic;
-		I_C    : in  std_logic_vector(31 downto 0);
-		I_CS   : in  std_logic_vector(31 downto 0);
-		Q_CS   : out std_logic_vector(31 downto 0);
-		Q_R    : out std_logic_vector(31 downto 0)
+		I_CLK : in  std_logic;
+		I_C   : in  std_logic_vector(31 downto 0);
+		I_PC  : in  std_logic_vector(31 downto 0);
+		I_CS  : in  std_logic_vector(31 downto 0);
+		Q_CS  : out std_logic_vector(31 downto 0);
+		Q_R   : out std_logic_vector(31 downto 0);
+		Q_PC  : out std_logic_vector(31 downto 0)
 	);
 end entity memory;
 
@@ -37,6 +40,17 @@ begin
 			I_D   => I_CS,
 			I_W   => I_CLK,
 			Q_D   => L_CS
+		);
+
+	pc : reg
+		generic map(
+			val => X"00000000"
+		)
+		port map(
+			I_CLK => I_CLK,
+			I_D   => I_PC,
+			I_W   => I_CLK,
+			Q_D   => Q_PC
 		);
 
 	c : reg

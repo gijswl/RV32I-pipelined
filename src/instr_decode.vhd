@@ -1,5 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 entity instr_decode is
@@ -15,7 +16,9 @@ entity instr_decode is
 		Q_PC    : out std_logic_vector(31 downto 0);
 		Q_CS    : out std_logic_vector(31 downto 0);
 		Q_A     : out std_logic_vector(31 downto 0);
-		Q_B     : out std_logic_vector(31 downto 0)
+		Q_B     : out std_logic_vector(31 downto 0);
+		Q_IMM   : out std_logic_vector(31 downto 0);
+		Q_JD    : out std_logic
 	);
 end entity instr_decode;
 
@@ -78,8 +81,9 @@ architecture RTL of instr_decode is
 
 	signal MA_WBSEL : std_logic := '0';
 
-	signal WB_RW : std_logic                    := '0';
-	signal WB_RA : std_logic_vector(4 downto 0) := "00000";
+	signal WB_PCR : std_logic                    := '0';
+	signal WB_RW  : std_logic                    := '0';
+	signal WB_RA  : std_logic_vector(4 downto 0) := "00000";
 begin
 	ir : reg
 		generic map(
@@ -122,8 +126,8 @@ begin
 			Q_FORMAT => L_FORMAT
 		);
 
-	L_KILL <= I_KILL;
-	L_WIR <= not I_STALL;
+	L_KILL <= I_KILL and (not L_TYPE(25) and not L_TYPE(27));
+	L_WIR  <= not I_STALL;
 
 	with L_FORMAT select L_IMM <=
 		((20 downto 0 => L_INSTR(31)) & L_INSTR(30 downto 25) & L_INSTR(24 downto 21) & L_INSTR(20)) when "000010", --
@@ -162,16 +166,20 @@ begin
 
 	EX_ALUFUNC <= L_ALU_FUNC when L_TYPE(4) = '1' or L_TYPE(5) = '1' else L_INSTR_FUNC;
 
-	WB_RW <= L_TYPE(4) or L_TYPE(5) or L_TYPE(12) or L_TYPE(13);
-	WB_RA <= L_INSTR(11 downto 7);
+	WB_PCR <= L_TYPE(25) or L_TYPE(27);
+	WB_RW  <= L_TYPE(4) or L_TYPE(5) or L_TYPE(12) or L_TYPE(13) or L_TYPE(25) or L_TYPE(27);
+	WB_RA  <= L_INSTR(11 downto 7);
 
-	Q_PC <= L_PC;
-	Q_A  <= L_RD1;
-	Q_B  <= L_IMM when L_IMMSEL = '1' and L_OPSEL = '1'
+	Q_JD <= L_TYPE(27);
+
+	Q_PC  <= L_PC;
+	Q_A   <= L_RD1;
+	Q_B   <= L_IMM when L_IMMSEL = '1' and L_OPSEL = '1'
 		else L_RD2 when L_OPSEL = '0'
 		else X"00000000";
+	Q_IMM <= L_IMM;
 
 	with L_KILL select Q_CS <=
 		X"00000000" when '1',
-		std_logic_vector(resize(unsigned(L_INSTR(14 downto 12) & L_TYPE(24) & MA_WBSEL & WB_RW & ID_RE2 & ID_RE1 & EX_ALUFUNC & WB_RA & L_INSTR(24 downto 20) & L_INSTR(19 downto 15)), Q_CS'length)) when others;
+		std_logic_vector(resize(unsigned(WB_PCR & L_INSTR(14 downto 12) & L_TYPE(24) & MA_WBSEL & WB_RW & ID_RE2 & ID_RE1 & EX_ALUFUNC & WB_RA & L_INSTR(24 downto 20) & L_INSTR(19 downto 15)), Q_CS'length)) when others;
 end architecture RTL;

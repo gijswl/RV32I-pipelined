@@ -1,11 +1,13 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 entity writeback is
 	port(
 		I_CLK : in  std_logic;
 		I_R   : in  std_logic_vector(31 downto 0);
+		I_PC  : in  std_logic_vector(31 downto 0);
 		I_CS  : in  std_logic_vector(31 downto 0);
 		Q_RD  : out std_logic_vector(31 downto 0);
 		Q_RW  : out std_logic;
@@ -27,6 +29,7 @@ architecture RTL of writeback is
 	end component reg;
 
 	signal L_CS : std_logic_vector(31 downto 0) := X"00000000";
+	signal L_PC : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_R  : std_logic_vector(31 downto 0) := X"00000000";
 begin
 	ir : reg
@@ -38,6 +41,17 @@ begin
 			I_D   => I_CS,
 			I_W   => I_CLK,
 			Q_D   => L_CS
+		);
+
+	pc : reg
+		generic map(
+			val => X"00000000"
+		)
+		port map(
+			I_CLK => I_CLK,
+			I_D   => I_PC,
+			I_W   => I_CLK,
+			Q_D   => L_PC
 		);
 
 	r : reg
@@ -52,6 +66,6 @@ begin
 		);
 
 	Q_RW <= L_CS(22);
-	Q_RD <= L_R;
+	Q_RD <= (L_PC + "100") when L_CS(28) = '1' else L_R;
 	Q_RA <= L_CS(14 downto 10);
 end architecture RTL;

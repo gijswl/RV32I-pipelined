@@ -1,5 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 library work;
@@ -19,6 +20,8 @@ architecture RTL of cpu_core is
 			I_KILL  : in  std_logic;
 			I_PCSRC : in  std_logic_vector(1 downto 0);
 			I_BR    : in  std_logic_vector(31 downto 0);
+			I_JD    : in  std_logic_vector(31 downto 0);
+			I_JI    : in  std_logic_vector(31 downto 0);
 			Q_INSTR : out std_logic_vector(31 downto 0);
 			Q_PC    : out std_logic_vector(31 downto 0)
 		);
@@ -37,7 +40,9 @@ architecture RTL of cpu_core is
 			Q_PC    : out std_logic_vector(31 downto 0);
 			Q_CS    : out std_logic_vector(31 downto 0);
 			Q_A     : out std_logic_vector(31 downto 0);
-			Q_B     : out std_logic_vector(31 downto 0)
+			Q_B     : out std_logic_vector(31 downto 0);
+			Q_IMM   : out std_logic_vector(31 downto 0);
+			Q_JD    : out std_logic
 		);
 	end component instr_decode;
 
@@ -50,9 +55,13 @@ architecture RTL of cpu_core is
 			I_A    : in  std_logic_vector(31 downto 0);
 			I_B    : in  std_logic_vector(31 downto 0);
 			I_FW_M : in  std_logic_vector(31 downto 0);
+			I_IMM  : in  std_logic_vector(31 downto 0);
+			I_PC   : in  std_logic_vector(31 downto 0);
 			I_CS   : in  std_logic_vector(31 downto 0);
 			Q_CS   : out std_logic_vector(31 downto 0);
 			Q_C    : out std_logic_vector(31 downto 0);
+			Q_IMM  : out std_logic_vector(31 downto 0);
+			Q_PC   : out std_logic_vector(31 downto 0);
 			Q_BT   : out std_logic
 		);
 	end component execute;
@@ -61,9 +70,11 @@ architecture RTL of cpu_core is
 		port(
 			I_CLK : in  std_logic;
 			I_C   : in  std_logic_vector(31 downto 0);
+			I_PC  : in  std_logic_vector(31 downto 0);
 			I_CS  : in  std_logic_vector(31 downto 0);
 			Q_CS  : out std_logic_vector(31 downto 0);
-			Q_R   : out std_logic_vector(31 downto 0)
+			Q_R   : out std_logic_vector(31 downto 0);
+			Q_PC  : out std_logic_vector(31 downto 0)
 		);
 	end component memory;
 
@@ -71,6 +82,7 @@ architecture RTL of cpu_core is
 		port(
 			I_CLK : in  std_logic;
 			I_R   : in  std_logic_vector(31 downto 0);
+			I_PC  : in  std_logic_vector(31 downto 0);
 			I_CS  : in  std_logic_vector(31 downto 0);
 			Q_RD  : out std_logic_vector(31 downto 0);
 			Q_RW  : out std_logic;
@@ -86,6 +98,11 @@ architecture RTL of cpu_core is
 
 	signal IF_PC : std_logic_vector(31 downto 0) := X"00000000";
 	signal ID_PC : std_logic_vector(31 downto 0) := X"00000000";
+	signal EX_PC : std_logic_vector(31 downto 0) := X"00000000";
+	signal MA_PC : std_logic_vector(31 downto 0) := X"00000000";
+
+	signal ID_IMM : std_logic_vector(31 downto 0) := X"00000000";
+	signal EX_IMM : std_logic_vector(31 downto 0) := X"00000000";
 
 	signal L_A : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_B : std_logic_vector(31 downto 0) := X"00000000";
@@ -100,10 +117,15 @@ architecture RTL of cpu_core is
 	signal C_FW_B : std_logic_vector(1 downto 0) := "00";
 
 	signal C_STALL : std_logic := '0';
+	signal C_KILL  : std_logic := '0';
 
 	signal C_BT       : std_logic                     := '0';
+	signal C_JD       : std_logic                     := '0';
+	signal C_JI       : std_logic                     := '0';
 	signal C_PCSRC    : std_logic_vector(1 downto 0)  := "00";
 	signal C_BRTARGET : std_logic_vector(31 downto 0) := X"00000000";
+	signal C_JDTARGET : std_logic_vector(31 downto 0) := X"00000000";
+	signal C_JITARGET : std_logic_vector(31 downto 0) := X"00000000";
 begin
 	process(I_CLK)
 	begin
@@ -115,10 +137,12 @@ begin
 	if_stage : instr_fetch
 		port map(
 			I_CLK   => I_CLK,
-			I_KILL  => C_BT,
+			I_KILL  => C_KILL,
 			I_STALL => C_STALL,
 			I_PCSRC => C_PCSRC,
 			I_BR    => C_BRTARGET,
+			I_JD    => C_JDTARGET,
+			I_JI    => C_JITARGET,
 			Q_INSTR => L_INSTR_IF,
 			Q_PC    => IF_PC
 		);
@@ -127,7 +151,7 @@ begin
 		port map(
 			I_CLK   => I_CLK,
 			I_STALL => C_STALL,
-			I_KILL  => C_BT,
+			I_KILL  => C_KILL,
 			I_RW    => L_RW,
 			I_RA    => L_RA,
 			I_RD    => L_RD,
@@ -136,21 +160,27 @@ begin
 			Q_PC    => ID_PC,
 			Q_CS    => ID_CS,
 			Q_A     => L_A,
-			Q_B     => L_B
+			Q_B     => L_B,
+			Q_IMM   => ID_IMM,
+			Q_JD    => C_JD
 		);
 
 	ex_stage : execute
 		port map(
 			I_CLK  => I_CLK,
-			I_KILL => C_BT,
+			I_KILL => C_KILL,
 			I_FW_A => C_FW_A,
 			I_FW_B => C_FW_B,
 			I_A    => L_A,
 			I_B    => L_B,
 			I_FW_M => L_R,
+			I_IMM  => ID_IMM,
+			I_PC   => ID_PC,
 			I_CS   => ID_CS,
 			Q_CS   => EX_CS,
 			Q_C    => L_C,
+			Q_IMM  => EX_IMM,
+			Q_PC   => EX_PC,
 			Q_BT   => C_BT
 		);
 
@@ -158,15 +188,18 @@ begin
 		port map(
 			I_CLK => I_CLK,
 			I_C   => L_C,
+			I_PC  => EX_PC,
 			I_CS  => EX_CS,
 			Q_CS  => MA_CS,
-			Q_R   => L_R
+			Q_R   => L_R,
+			Q_PC  => MA_PC
 		);
 
 	wb_stage : writeback
 		port map(
 			I_CLK => I_CLK,
 			I_R   => L_R,
+			I_PC  => MA_PC,
 			I_CS  => MA_CS,
 			Q_RD  => L_RD,
 			Q_RW  => L_RW,
@@ -174,10 +207,8 @@ begin
 		);
 
 	-- TODO will probably need to stall again at some point
-	C_STALL <= '0';                     -- '1' when (
-	-- ((((ID_CS_BUF(4 downto 0) = EX_CS(14 downto 10)) and EX_CS(22) = '1') or ((ID_CS_BUF(4 downto 0) = MA_CS(14 downto 10)) and MA_CS(22) = '1')) and ID_CS_BUF(20) = '1') --
-	-- or ((((ID_CS_BUF(9 downto 5) = EX_CS(14 downto 10)) and EX_CS(22) = '1') or ((ID_CS_BUF(9 downto 5) = MA_CS(14 downto 10)) and MA_CS(22) = '1')) and ID_CS_BUF(21) = '1') --
-	-- ) else '0';
+	C_STALL <= '0';
+	C_KILL  <= C_BT or C_JD;
 
 	C_FW_A <= "01" when (
 			((ID_CS(4 downto 0) = EX_CS(14 downto 10)) and EX_CS(22) = '1' and ID_CS(20) = '1')
@@ -187,5 +218,10 @@ begin
 		)
 		else "00";
 
-	C_PCSRC <= "01" when C_BT = '1' else "00";
+	C_PCSRC    <= "01" when C_BT = '1'
+		else "11" when C_JI = '1'
+		else "10" when C_JD = '1'
+		else "00";
+	C_BRTARGET <= EX_PC + EX_IMM;
+	C_JDTARGET <= ID_PC + ID_IMM;
 end architecture RTL;

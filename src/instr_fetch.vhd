@@ -13,6 +13,8 @@ entity instr_fetch is
 		I_KILL  : in  std_logic;
 		I_PCSRC : in  std_logic_vector(1 downto 0);
 		I_BR    : in  std_logic_vector(31 downto 0);
+		I_JD    : in  std_logic_vector(31 downto 0);
+		I_JI    : in  std_logic_vector(31 downto 0);
 		Q_INSTR : out std_logic_vector(31 downto 0);
 		Q_PC    : out std_logic_vector(31 downto 0)
 	);
@@ -69,6 +71,8 @@ begin
 	L_PC_4   <= L_PC + "100";
 	L_NEXTPC <= L_PC_4 when I_PCSRC = "00"
 		else I_BR when I_PCSRC = "01"
+		else I_JD when I_PCSRC = "10"
+		else I_JI when I_PCSRC = "11"
 	;
 
 	Q_PC    <= L_PC;

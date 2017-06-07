@@ -1,5 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 entity execute is
@@ -11,9 +12,13 @@ entity execute is
 		I_A    : in  std_logic_vector(31 downto 0);
 		I_B    : in  std_logic_vector(31 downto 0);
 		I_FW_M : in  std_logic_vector(31 downto 0);
+		I_IMM  : in  std_logic_vector(31 downto 0);
+		I_PC   : in  std_logic_vector(31 downto 0);
 		I_CS   : in  std_logic_vector(31 downto 0);
 		Q_CS   : out std_logic_vector(31 downto 0);
 		Q_C    : out std_logic_vector(31 downto 0);
+		Q_IMM  : out std_logic_vector(31 downto 0);
+		Q_PC   : out std_logic_vector(31 downto 0);
 		Q_BT   : out std_logic
 	);
 end entity execute;
@@ -49,7 +54,7 @@ architecture RTL of execute is
 	signal L_A  : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_B  : std_logic_vector(31 downto 0) := X"00000000";
 
-	signal B_BT   : std_logic := '0';
+	signal B_BT : std_logic := '0';
 
 	signal L_CS : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_CC : std_logic_vector(2 downto 0)  := "000";
@@ -64,6 +69,28 @@ begin
 			I_D   => I_CS,
 			I_W   => I_CLK,
 			Q_D   => L_CS
+		);
+
+	pc : reg
+		generic map(
+			val => X"00000000"
+		)
+		port map(
+			I_CLK => I_CLK,
+			I_D   => I_PC,
+			I_W   => I_CLK,
+			Q_D   => Q_PC
+		);
+
+	imm : reg
+		generic map(
+			val => X"00000000"
+		)
+		port map(
+			I_CLK => I_CLK,
+			I_D   => I_IMM,
+			I_W   => I_CLK,
+			Q_D   => Q_IMM
 		);
 
 	a : reg

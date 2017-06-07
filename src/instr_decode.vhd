@@ -122,8 +122,8 @@ begin
 			Q_FORMAT => L_FORMAT
 		);
 
-	L_KILL <= L_TYPE(25) or L_TYPE(27) or I_KILL;
-	L_WIR  <= not I_STALL and not L_KILL;
+	L_KILL <= I_KILL;
+	L_WIR <= not I_STALL;
 
 	with L_FORMAT select L_IMM <=
 		((20 downto 0 => L_INSTR(31)) & L_INSTR(30 downto 25) & L_INSTR(24 downto 21) & L_INSTR(20)) when "000010", --
@@ -171,8 +171,7 @@ begin
 		else L_RD2 when L_OPSEL = '0'
 		else X"00000000";
 
-	with I_STALL select Q_CS <=
+	with L_KILL select Q_CS <=
 		X"00000000" when '1',
 		std_logic_vector(resize(unsigned(L_INSTR(14 downto 12) & L_TYPE(24) & MA_WBSEL & WB_RW & ID_RE2 & ID_RE1 & EX_ALUFUNC & WB_RA & L_INSTR(24 downto 20) & L_INSTR(19 downto 15)), Q_CS'length)) when others;
-
 end architecture RTL;

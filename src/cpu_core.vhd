@@ -16,6 +16,7 @@ architecture RTL of cpu_core is
 		port(
 			I_CLK   : in  std_logic;
 			I_STALL : in  std_logic;
+			I_KILL  : in  std_logic;
 			I_PCSRC : in  std_logic_vector(1 downto 0);
 			I_BR    : in  std_logic_vector(31 downto 0);
 			Q_INSTR : out std_logic_vector(31 downto 0);
@@ -43,6 +44,7 @@ architecture RTL of cpu_core is
 	component execute is
 		port(
 			I_CLK  : in  std_logic;
+			I_KILL : in  std_logic;
 			I_FW_A : in  std_logic_vector(1 downto 0);
 			I_FW_B : in  std_logic_vector(1 downto 0);
 			I_A    : in  std_logic_vector(31 downto 0);
@@ -113,11 +115,12 @@ begin
 	if_stage : instr_fetch
 		port map(
 			I_CLK   => I_CLK,
+			I_KILL  => C_BT,
 			I_STALL => C_STALL,
 			I_PCSRC => C_PCSRC,
 			I_BR    => C_BRTARGET,
 			Q_INSTR => L_INSTR_IF,
-			Q_PC    => ID_PC
+			Q_PC    => IF_PC
 		);
 
 	id_stage : instr_decode
@@ -139,6 +142,7 @@ begin
 	ex_stage : execute
 		port map(
 			I_CLK  => I_CLK,
+			I_KILL => C_BT,
 			I_FW_A => C_FW_A,
 			I_FW_B => C_FW_B,
 			I_A    => L_A,

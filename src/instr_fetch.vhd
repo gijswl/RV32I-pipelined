@@ -10,6 +10,7 @@ entity instr_fetch is
 	port(
 		I_CLK   : in  std_logic;
 		I_STALL : in  std_logic;
+		I_KILL  : in  std_logic;
 		I_PCSRC : in  std_logic_vector(1 downto 0);
 		I_BR    : in  std_logic_vector(31 downto 0);
 		Q_INSTR : out std_logic_vector(31 downto 0);
@@ -42,6 +43,8 @@ architecture RTL of instr_fetch is
 	signal L_PC_4   : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_NEXTPC : std_logic_vector(31 downto 0) := X"00000000";
 
+	signal L_INSTR : std_logic_vector(31 downto 0) := X"00000000";
+
 	signal L_WPC : std_logic := '0';
 begin
 	pc : reg
@@ -59,12 +62,15 @@ begin
 		port map(
 			I_CLK   => I_CLK,
 			I_ADR   => L_PC,
-			Q_INSTR => Q_INSTR
+			Q_INSTR => L_INSTR
 		);
 
 	L_WPC    <= not I_STALL;
 	L_PC_4   <= L_PC + "100";
-	L_NEXTPC <= L_PC_4 when I_PCSRC = "00" else I_BR when I_PCSRC = "01";
+	L_NEXTPC <= L_PC_4 when I_PCSRC = "00"
+		else I_BR when I_PCSRC = "01"
+	;
 
-	Q_PC <= L_PC;
+	Q_PC    <= L_PC;
+	Q_INSTR <= L_INSTR when I_KILL = '0' else X"00000000";
 end architecture RTL;

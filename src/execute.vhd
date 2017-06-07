@@ -5,6 +5,7 @@ use ieee.numeric_std.all;
 entity execute is
 	port(
 		I_CLK  : in  std_logic;
+		I_KILL : in  std_logic;
 		I_FW_A : in  std_logic_vector(1 downto 0);
 		I_FW_B : in  std_logic_vector(1 downto 0);
 		I_A    : in  std_logic_vector(31 downto 0);
@@ -41,12 +42,14 @@ architecture RTL of execute is
 		);
 	end component alu;
 
+	signal L_WIR : std_logic;
+
 	signal L_IA : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_IB : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_A  : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_B  : std_logic_vector(31 downto 0) := X"00000000";
 
-	signal B_BT : std_logic := '0';
+	signal B_BT   : std_logic := '0';
 
 	signal L_CS : std_logic_vector(31 downto 0) := X"00000000";
 	signal L_CC : std_logic_vector(2 downto 0)  := "000";

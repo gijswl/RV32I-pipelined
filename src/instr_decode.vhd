@@ -134,7 +134,7 @@ begin
 		((20 downto 0 => L_INSTR(31)) & L_INSTR(30 downto 25) & L_INSTR(11 downto 8) & L_INSTR(7)) when "000100", --
 		((19 downto 0 => L_INSTR(31)) & L_INSTR(7) & L_INSTR(30 downto 25) & L_INSTR(11 downto 8) & '0') when "001000", --
 		(L_INSTR(31) & L_INSTR(30 downto 20) & L_INSTR(19 downto 12) & (11 downto 0 => '0')) when "010000", --
-		((11 downto 0 => L_INSTR(31)) & L_INSTR(19 downto 12) & L_INSTR(20) & L_INSTR(31 downto 25) & L_INSTR(24 downto 21)) when "100000", --
+		((11 downto 0 => L_INSTR(31)) & L_INSTR(19 downto 12) & L_INSTR(20) & L_INSTR(30 downto 21) & '0') when "100000", --
 		X"00000000" when others;
 
 	L_OPSEL  <= L_TYPE(4) or L_TYPE(5) or L_TYPE(13);
